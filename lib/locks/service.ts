@@ -24,11 +24,11 @@ export async function acquireLock(ownerUserId: string, resourceType: string, res
       return tx.recordLock.create({ data: { resourceType, resourceId, ownerUserId, lockTokenHash: hash(token), expiresAt } });
     });
     if (!lock) return { enabled: true as const, token: null, lock: await getLock(resourceType, resourceId) };
-    return { enabled: true as const, token, lock };
+    return { enabled: true as const, token, lock: await getLock(resourceType, resourceId) };
   } catch (caught) { if ((caught as { code?: string }).code === "P2002") return { enabled: true as const, token: null, lock: await getLock(resourceType, resourceId) }; throw caught; }
 }
 
-export async function getLock(resourceType: string, resourceId: string) { const lock = await prisma.recordLock.findUnique({ where: { resourceType_resourceId: { resourceType, resourceId } } }); return lock && lock.expiresAt > new Date() ? lock : null; }
+export async function getLock(resourceType: string, resourceId: string) { const lock = await prisma.recordLock.findUnique({ where: { resourceType_resourceId: { resourceType, resourceId } }, include: { ownerUser: { select: { id: true, username: true, displayName: true } } } }); return lock && lock.expiresAt > new Date() ? lock : null; }
 export async function heartbeatLock(userId: string, id: string, token: string) { const lock = await prisma.recordLock.findFirst({ where: { id, ownerUserId: userId, lockTokenHash: hash(token), expiresAt: { gt: new Date() } } }); if (!lock) return null; return prisma.recordLock.update({ where: { id }, data: { heartbeatAt: new Date(), expiresAt: new Date(Date.now() + TTL_SECONDS * 1000) } }); }
 export async function releaseLock(userId: string, id: string, token: string) { return prisma.recordLock.deleteMany({ where: { id, ownerUserId: userId, lockTokenHash: hash(token) } }); }
 export async function forceReleaseLock(id: string) { return prisma.recordLock.delete({ where: { id } }); }
