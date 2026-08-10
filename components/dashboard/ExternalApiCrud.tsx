@@ -19,6 +19,7 @@ export function ExternalApiCrud() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; data?: string }>({});
 
   async function load() {
     setLoading(true);
@@ -47,6 +48,7 @@ export function ExternalApiCrud() {
     setName("");
     setDataText("{}");
     setErrorMessage("");
+    setFieldErrors({});
   }
 
   function startEdit(object: ExternalObject) {
@@ -54,6 +56,7 @@ export function ExternalApiCrud() {
     setName(object.name);
     setDataText(JSON.stringify(object.data ?? {}, null, 2));
     setErrorMessage("");
+    setFieldErrors({});
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -61,15 +64,20 @@ export function ExternalApiCrud() {
     setSaving(true);
     setErrorMessage("");
     let data: Record<string, unknown>;
+    const nextFieldErrors: { name?: string; data?: string } = {};
+    if (!name.trim()) nextFieldErrors.name = "Name wajib diisi.";
     try {
       const parsed: unknown = JSON.parse(dataText);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Data must be a JSON object");
       data = parsed as Record<string, unknown>;
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Data must contain valid JSON");
+      nextFieldErrors.data = error instanceof Error ? error.message : "Data harus berupa JSON object yang valid.";
+      setFieldErrors(nextFieldErrors);
       setSaving(false);
       return;
     }
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) { setSaving(false); return; }
     try {
       const response = await fetch(editing?.id ? `/api/v1/integrations/restful-api-dev/objects/${encodeURIComponent(editing.id)}` : "/api/v1/integrations/restful-api-dev/objects", {
         method: editing?.id ? "PUT" : "POST",
@@ -113,8 +121,8 @@ export function ExternalApiCrud() {
     {errorMessage && <p className="rounded-lg border-l-4 border-[#dc2626] bg-[#fff4f2] p-4 text-sm font-medium text-[#a53b36]">{errorMessage}</p>}
     {editing && <form className="panel grid gap-5 border-[#c9c6aa] bg-[#fbfaf6] p-5" onSubmit={submit}>
       <div><p className="eyebrow">Object editor</p><h2 className="mt-1 text-xl font-bold">{editing.id ? "Edit object" : "Create object"}</h2></div>
-      <label className="grid gap-1 text-sm font-bold">Name<input value={name} onChange={(event) => setName(event.target.value)} required className="input-base" /></label>
-      <label className="grid gap-1 text-sm font-bold">Data JSON<textarea value={dataText} onChange={(event) => setDataText(event.target.value)} rows={8} className="input-base font-mono text-sm" /></label>
+      <label className="grid gap-1 text-sm font-bold">Name<input value={name} onBlur={() => setFieldErrors((current) => ({ ...current, ...(name.trim() ? { name: undefined } : { name: "Name wajib diisi." }) }))} onChange={(event) => { setName(event.target.value); if (event.target.value.trim()) setFieldErrors((current) => ({ ...current, name: undefined })); }} required className={`input-base ${fieldErrors.name ? "border-[#dc2626] bg-[#fffaf9]" : ""}`} />{fieldErrors.name ? <span className="text-xs font-medium text-[#b43d37]">{fieldErrors.name}</span> : <span className="text-xs font-normal text-[#8a877e]">Wajib diisi.</span>}</label>
+      <label className="grid gap-1 text-sm font-bold">Data JSON<textarea value={dataText} onBlur={() => { try { const parsed: unknown = JSON.parse(dataText); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Data harus berupa JSON object."); setFieldErrors((current) => ({ ...current, data: undefined })); } catch (error) { setFieldErrors((current) => ({ ...current, data: error instanceof Error ? error.message : "JSON tidak valid." })); } }} onChange={(event) => { setDataText(event.target.value); setFieldErrors((current) => ({ ...current, data: undefined })); }} rows={8} className={`input-base font-mono text-sm ${fieldErrors.data ? "border-[#dc2626] bg-[#fffaf9]" : ""}`} />{fieldErrors.data ? <span className="text-xs font-medium text-[#b43d37]">{fieldErrors.data}</span> : <span className="text-xs font-normal text-[#8a877e]">Harus berupa JSON object.</span>}</label>
       <div className="flex gap-2"><button disabled={saving} className="rounded-lg bg-[#5a5a40] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Save object"}</button><button type="button" className="rounded-lg border border-[#d4d1cb] bg-white px-4 py-3 text-sm font-bold" onClick={() => setEditing(null)}>Cancel</button></div>
     </form>}
     <div className="panel overflow-hidden">
