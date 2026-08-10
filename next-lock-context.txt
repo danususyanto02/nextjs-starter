@@ -1,0 +1,1 @@
+Lock token is returned once by acquire endpoint and remains page-memory only. Client sends X-Record-Lock-Token on mutations, heartbeat every 30 seconds, releases on Back/pagehide, and renders read-only when token is unavailable.

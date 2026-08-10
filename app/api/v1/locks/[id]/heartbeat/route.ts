@@ -1,0 +1,2 @@
+import { resolveApiUser, unauthorized } from "@/lib/api/bearer"; import { error, ok } from "@/lib/api/response"; import { heartbeatLock } from "@/lib/locks/service";
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) { const user = await resolveApiUser(request); if (!user) return unauthorized(); const token = request.headers.get("X-Record-Lock-Token"); const lock = token ? await heartbeatLock(user.id, (await context.params).id, token) : null; return lock ? ok(lock) : error("LOCKED", "Lock is invalid or expired", 423); }

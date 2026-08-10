@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-superadmin}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+      PUBLIC_REGISTRATION_ENABLED: ${PUBLIC_REGISTRATION_ENABLED:-false}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RESTFUL_API_DEV_BASE_URL: ${RESTFUL_API_DEV_BASE_URL:-https://api.restful-api.dev}
+      RESTFUL_API_DEV_API_KEY: ${RESTFUL_API_DEV_API_KEY}

@@ -1,0 +1,8 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+
+export function useRecordLock(resourceType: string, resourceId: string, enabled = true) {
+  const [token, setToken] = useState<string | null>(null); const [readOnly, setReadOnly] = useState(!enabled); const [lockId, setLockId] = useState<string | null>(null); const tokenRef = useRef<string | null>(null); const lockIdRef = useRef<string | null>(null);
+  useEffect(() => { if (!enabled) { setReadOnly(false); return; } let active = true; fetch("/api/v1/locks/acquire", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ resourceType, resourceId }) }).then(async (response) => { const body = await response.json(); if (!active) return; if (response.ok && body.data.token) { tokenRef.current = body.data.token; lockIdRef.current = body.data.lock.id; setToken(body.data.token); setLockId(body.data.lock.id); setReadOnly(false); } else setReadOnly(true); }); const timer = window.setInterval(() => { if (lockIdRef.current && tokenRef.current) void fetch(`/api/v1/locks/${lockIdRef.current}/heartbeat`, { method: "POST", headers: { "X-Record-Lock-Token": tokenRef.current } }); }, 30000); const release = () => { if (lockIdRef.current && tokenRef.current) void fetch(`/api/v1/locks/${lockIdRef.current}`, { method: "DELETE", headers: { "X-Record-Lock-Token": tokenRef.current }, keepalive: true }); }; window.addEventListener("pagehide", release); return () => { active = false; window.clearInterval(timer); window.removeEventListener("pagehide", release); }; }, [enabled, resourceType, resourceId]);
+  return { token, readOnly, lockId };
+}

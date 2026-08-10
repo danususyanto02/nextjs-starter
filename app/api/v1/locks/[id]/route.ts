@@ -1,0 +1,2 @@
+import { resolveApiUser, unauthorized } from "@/lib/api/bearer"; import { error, ok } from "@/lib/api/response"; import { releaseLock } from "@/lib/locks/service";
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) { const user = await resolveApiUser(request); if (!user) return unauthorized(); const token = request.headers.get("X-Record-Lock-Token"); if (!token) return error("LOCKED", "Lock token required", 423); await releaseLock(user.id, (await context.params).id, token); return ok({ released: true }); }

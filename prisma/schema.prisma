@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum RoleStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum PermissionAction {
+  MENU
+  ADD
+  EDIT
+  DELETE
+}
+
+enum FeatureStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id                  String              @id @default(cuid())
+  username            String              @unique
+  passwordHash        String
+  displayName         String?
+  email               String?             @unique
+  status              UserStatus          @default(ACTIVE)
+  isSystemProtected   Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  userRoles           UserRole[]
+  organizationMembers  OrganizationMember[]
+  refreshTokens       RefreshToken[]
+  recordLocks         RecordLock[]
+}
+
+model Role {
+  id                  String              @id @default(cuid())
+  name                String
+  code                String              @unique
+  isSystemRole        Boolean             @default(false)
+  status              RoleStatus          @default(ACTIVE)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  userRoles           UserRole[]
+  rolePermissions     RolePermission[]
+  organizationRoles   OrganizationRole[]
+}
+
+model Permission {
+  id                  String              @id @default(cuid())
+  code                String              @unique
+  action              PermissionAction
+  featureId           String
+  feature             MenuFeature         @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  rolePermissions     RolePermission[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@index([featureId])
+}
+
+model MenuFeature {
+  id                  String              @id @default(cuid())
+  name                String
+  routePath           String              @unique
+  icon                String?
+  sortOrder           Int                 @default(0)
+  parentId            String?
+  status              FeatureStatus       @default(ACTIVE)
+  isSystemLocked      Boolean             @default(false)
+  recordLockEnabled   Boolean             @default(true)
+  parent              MenuFeature?        @relation("FeatureTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children            MenuFeature[]       @relation("FeatureTree")
+  permissions         Permission[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@index([parentId])
+}
+
+model UserRole {
+  userId              String
+  roleId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                Role                @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId              String
+  permissionId        String
+  role                Role                @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission          Permission          @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model Organization {
+  id                  String              @id @default(cuid())
+  name                String
+  code                String              @unique
+  status              OrganizationStatus  @default(ACTIVE)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  roles               OrganizationRole[]
+  members             OrganizationMember[]
+}
+
+model OrganizationRole {
+  organizationId      String
+  roleId              String
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role                Role                @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@id([organizationId, roleId])
+  @@index([roleId])
+}
+
+model OrganizationMember {
+  organizationId      String
+  userId              String
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@id([organizationId, userId])
+  @@index([userId])
+}
+
+model RefreshToken {
+  id                  String              @id @default(cuid())
+  tokenHash           String              @unique
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  replacedById        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RateLimitEntry {
+  id                  String              @id @default(cuid())
+  key                 String              @unique
+  count               Int                 @default(0)
+  windowStartedAt     DateTime            @default(now())
+  expiresAt           DateTime
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  @@index([expiresAt])
+}
+
+model SystemSetting {
+  id                  String              @id @default(cuid())
+  recordLockEnabled   Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model RecordLock {
+  id                  String              @id @default(cuid())
+  resourceType        String
+  resourceId          String
+  lockTokenHash       String
+  ownerUserId         String
+  acquiredAt          DateTime            @default(now())
+  heartbeatAt         DateTime            @default(now())
+  expiresAt            DateTime
+  ownerUser           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  @@unique([resourceType, resourceId])
+  @@index([ownerUserId])
+  @@index([expiresAt])
+}
