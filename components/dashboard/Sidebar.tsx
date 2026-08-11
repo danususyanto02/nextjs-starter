@@ -1,26 +1,39 @@
-import Link from "next/link";
 import { auth } from "@/auth";
+import { Icon } from "@/components/ui/Icon";
 import { getEffectivePermissions } from "@/lib/rbac/permissions";
+import { SidebarNavigation } from "@/components/dashboard/SidebarNavigation";
 
-const items = [["Dashboard", "/dashboard", "AM0000001"], ["Users", "/dashboard/users", "AM0000002"], ["Roles", "/dashboard/roles", "AM0000003"], ["Organizations", "/dashboard/organizations", "AM0000004"], ["Features", "/dashboard/features", "AM0000005"], ["Locked Records", "/dashboard/locked-records", "AM0000006"], ["External API Demo", "/dashboard/external-api-demo", "AM0000007"]] as const;
-const icons = ["⌂", "◌", "◇", "▦", "◈", "⊙", "↗"];
+const items = [
+  { label: "Dashboard", href: "/dashboard", permission: "AM0000001", icon: "home" },
+  { label: "Users", href: "/dashboard/users", permission: "AM0000002", icon: "people" },
+  { label: "Roles", href: "/dashboard/roles", permission: "AM0000003", icon: "role" },
+  { label: "Organizations", href: "/dashboard/organizations", permission: "AM0000004", icon: "organization" },
+  { label: "Features", href: "/dashboard/features", permission: "AM0000005", icon: "settings" },
+  { label: "Locked Records", href: "/dashboard/locked-records", permission: "AM0000006", icon: "lock" },
+  { label: "External API Demo", href: "/dashboard/external-api-demo", permission: "AM0000007", icon: "api" }
+] as const;
 
 export async function Sidebar() {
   const session = await auth();
   const permissionSet = session?.user?.id ? await getEffectivePermissions(session.user.id) : { roleCodes: new Set<string>(), codes: new Set<string>() };
   const isSuperAdmin = permissionSet.roleCodes.has("SUPER_ADMIN");
-  const visibleItems = items.filter(([, , code]) => isSuperAdmin || permissionSet.codes.has(code));
+  const visibleItems = items.filter((item) => isSuperAdmin || permissionSet.codes.has(item.permission)).map(({ permission: _permission, ...item }) => item);
+
   return <>
-    <aside className="hidden min-h-screen w-[272px] shrink-0 flex-col border-r border-[#4c4c35] bg-[#3d3d2b] px-5 py-6 text-white lg:flex">
-      <div className="flex items-center gap-3 px-2">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#8c7355] text-lg font-bold text-white shadow-lg shadow-black/10">N</div>
-        <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Workspace</p><h1 className="text-lg font-bold tracking-tight">Northstar Admin</h1></div>
+    <aside className="hidden min-h-screen w-[244px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--surface)] px-3 py-4 lg:flex">
+      <div className="flex items-center gap-2.5 px-2 py-1">
+        <div className="grid h-8 w-8 place-items-center rounded-[6px] bg-[var(--primary)] text-sm font-bold text-white">N</div>
+        <div><p className="text-sm font-semibold tracking-[-0.02em] text-[var(--foreground)]">Northstar Admin</p><p className="text-[11px] text-[var(--muted)]">Operations workspace</p></div>
       </div>
-      <div className="my-8 h-px bg-white/10" />
-      <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Navigation</p>
-      <nav className="mt-3 space-y-1">{visibleItems.map(([label, href], index) => <Link className="group flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-white/65 hover:bg-white/10 hover:text-white" href={href} key={href}><span className="grid h-7 w-7 place-items-center rounded-md bg-white/5 text-sm text-[#d6c5a9] transition group-hover:bg-[#8c7355] group-hover:text-white">{icons[index]}</span>{label}</Link>)}</nav>
-      <div className="mt-auto rounded-xl border border-white/10 bg-black/10 p-4"><p className="text-xs font-semibold text-white/80">Protected workspace</p><p className="mt-1 text-xs leading-5 text-white/45">Permissions and sessions are enforced server-side.</p><div className="mt-4 flex items-center gap-2 text-xs text-[#b9d7bc]"><span className="h-2 w-2 rounded-full bg-[#73bd8d]" /> System operational</div></div>
+      <div className="mt-7 px-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--subtle)]">Workspace</div>
+      <SidebarNavigation items={visibleItems} />
+      <div className="mt-auto border-t border-[var(--line)] px-2 pt-4">
+        <div className="rounded-[6px] bg-[var(--surface-muted)] p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--body)]"><Icon className="text-[var(--success)]" name="check" />Protected workspace</div>
+          <p className="mt-1.5 text-[11px] leading-4 text-[var(--muted)]">Permissions and sessions stay enforced server-side.</p>
+        </div>
+      </div>
     </aside>
-    <nav className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-[#dedbd2] bg-[#f7f6f2]/95 px-4 py-3 backdrop-blur lg:hidden">{visibleItems.map(([label, href], index) => <Link className="flex shrink-0 items-center gap-2 rounded-lg border border-[#dedbd2] bg-white px-3 py-2 text-xs font-semibold text-[#4d4b43]" href={href} key={href}><span className="text-[#5a5a40]">{icons[index]}</span>{label}</Link>)}</nav>
+    <div className="lg:hidden"><SidebarNavigation items={visibleItems} /></div>
   </>;
 }

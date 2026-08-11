@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export function ok<T>(data: T, init?: ResponseInit) { return NextResponse.json({ data }, init); }
+export function okPage<T>(data: T, meta: { limit: number; offset: number; total: number }, init?: ResponseInit) { return NextResponse.json({ data, meta }, init); }
 export function error(code: string, message: string, status: number, details?: unknown) { return NextResponse.json({ error: { code, message, ...(details === undefined ? {} : { details }) } }, { status }); }
 export function mapPrismaError(caught: unknown) {
   const code = (caught as { code?: string }).code;
